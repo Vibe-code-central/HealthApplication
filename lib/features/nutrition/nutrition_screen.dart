@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/theme.dart';
 import '../../providers/nutrition_provider.dart';
+import '../../models/nutrition_log.dart';
 
 class NutritionScreen extends ConsumerWidget {
   const NutritionScreen({super.key});
@@ -151,6 +152,5 @@ class NutritionScreen extends ConsumerWidget {
 }
 
 // Temporary helpers
-import '../../models/nutrition_log.dart';
 MealEntry _mockMeal() => MealEntry(mealType: 'LUNCH', description: 'Chicken Breast & Rice', proteinGrams: 35.0, isJunkFood: false, isSugarDrink: false, location: 'HOME');
 MealEntry _mockJunk() => MealEntry(mealType: 'SNACK', description: 'Cold Drink & Chips', proteinGrams: 2.0, isJunkFood: true, isSugarDrink: true, location: 'OUTSIDE');
