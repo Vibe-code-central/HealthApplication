@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/nutrition_log.dart';
-
 import '../core/integrity/integrity_service.dart';
 import 'user_provider.dart';
 
@@ -14,23 +13,58 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
   final Ref _ref;
 
   NutritionNotifier(this._ref) : super([]) {
+    // Load existing logs synchronously (safe — super() is already set).
     _loadLogs();
+    // Ensure today's log exists, but defer state mutation to avoid
+    // modifying state while the widget tree is still building.
+    Future.microtask(_ensureTodayLog);
   }
+
+  // ── Internal helpers ────────────────────────────────────
 
   void _loadLogs() {
     final box = Hive.box<NutritionLog>('nutritionLogsBox');
     state = box.values.toList().cast<NutritionLog>();
   }
 
+  /// Creates today's log in Hive + state if one doesn't exist yet.
+  /// Always called via [Future.microtask] — never directly from build.
+  Future<void> _ensureTodayLog() async {
+    final today = DateTime.now();
+    final exists = state.any((log) =>
+        log.date.year == today.year &&
+        log.date.month == today.month &&
+        log.date.day == today.day);
+    if (exists) return;
+
+    final newLog = NutritionLog(
+      date: today,
+      proteinGrams: 0,
+      waterGlasses: 0,
+      meals: [],
+      junkFoodIncidents: 0,
+      xpEarned: 0,
+      weskerImpact: 0,
+      adaWongSummary: 'Awaiting intelligence.',
+    );
+    final box = Hive.box<NutritionLog>('nutritionLogsBox');
+    await box.add(newLog);
+    // Safe now — we are outside the build phase
+    state = [...state, newLog];
+  }
+
+  // ── Public read-only accessor ───────────────────────────
+
+  /// Returns today's log if it exists, or a blank sentinel.
+  /// NEVER modifies state — safe to call from build().
   NutritionLog getTodayLog() {
     final today = DateTime.now();
-    try {
-      return state.firstWhere((log) =>
+    return state.firstWhere(
+      (log) =>
           log.date.year == today.year &&
           log.date.month == today.month &&
-          log.date.day == today.day);
-    } catch (_) {
-      final newLog = NutritionLog(
+          log.date.day == today.day,
+      orElse: () => NutritionLog(
         date: today,
         proteinGrams: 0,
         waterGlasses: 0,
@@ -39,18 +73,12 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
         xpEarned: 0,
         weskerImpact: 0,
         adaWongSummary: 'Awaiting intelligence.',
-      );
-      final box = Hive.box<NutritionLog>('nutritionLogsBox');
-      box.add(newLog);
-      state = [...state, newLog];
-      return newLog;
-    }
+      ),
+    );
   }
 
-  // ── Water ──────────────────────────────────────────────
+  // ── Water ───────────────────────────────────────────────
 
-  /// Returns an [IntegrityResult]. If allowed = false, show the narrative
-  /// message to the user. If allowed = true, water is logged.
   Future<IntegrityResult> addWater() async {
     final profile = _ref.read(userProvider);
     if (profile == null) return const IntegrityResult(allowed: false);
@@ -60,12 +88,11 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     if (!check.allowed) return check;
 
     // Record timestamp on profile
-    final updatedTimestamps = [
-      ...profile.waterLogTimestamps,
-      DateTime.now(),
-    ];
+    final updatedTimestamps = [...profile.waterLogTimestamps, DateTime.now()];
     await _ref.read(userProvider.notifier).updateWaterTimestamps(updatedTimestamps);
 
+    // Ensure log exists before mutating (may not have been created yet)
+    await _ensureTodayLog();
     final todayLog = getTodayLog();
     todayLog.waterGlasses++;
     await _saveToday(todayLog);
@@ -76,8 +103,7 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
       return const IntegrityResult(
         allowed: true,
         xpAward: 20,
-        narrativeMessage:
-            '"Hydration optimal. Metabolic rate uncompromised."',
+        narrativeMessage: '"Hydration optimal. Metabolic rate uncompromised."',
         characterId: 'ADA',
       );
     }
@@ -85,9 +111,8 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     return const IntegrityResult(allowed: true);
   }
 
-  // ── Meals ──────────────────────────────────────────────
+  // ── Meals ───────────────────────────────────────────────
 
-  /// Returns an [IntegrityResult]. If allowed = false, cooldown is still active.
   Future<IntegrityResult> logMeal(MealEntry meal) async {
     final profile = _ref.read(userProvider);
     if (profile == null) return const IntegrityResult(allowed: false);
@@ -99,6 +124,8 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     // Record meal time on profile
     await _ref.read(userProvider.notifier).updateLastMealTime(DateTime.now());
 
+    // Ensure today's log is persisted
+    await _ensureTodayLog();
     final todayLog = getTodayLog();
     todayLog.meals.add(meal);
     todayLog.proteinGrams += meal.proteinGrams;
@@ -109,57 +136,42 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     String characterId = 'ADA';
 
     if (meal.isJunkFood) {
-      // Count junk incidents in the rolling 7-day window
       final weekAgo = DateTime.now().subtract(const Duration(days: 7));
       final weeklyJunkCount = state
           .where((log) => log.date.isAfter(weekAgo))
           .fold<int>(0, (sum, log) => sum + log.junkFoodIncidents);
 
-      final penaltyMultiplier =
-          IntegrityService.junkPenaltyMultiplier(weeklyJunkCount);
+      final penaltyMultiplier = IntegrityService.junkPenaltyMultiplier(weeklyJunkCount);
       final basePenalty = meal.isSugarDrink ? 40 : 30;
       final baseWesker = meal.isSugarDrink ? 15 : 10;
+      final multiplier = IntegrityService.penaltyMultiplier(profile);
 
-      final actualPenalty = (basePenalty * penaltyMultiplier).round();
-      final actualWesker = (baseWesker * penaltyMultiplier).round();
-
-      // Apply rookie reduction
-      final multiplier =
-          IntegrityService.penaltyMultiplier(profile);
-      weskerDelta = (actualWesker * multiplier).round();
-      xpDelta = -(actualPenalty * multiplier).round();
+      weskerDelta = ((baseWesker * penaltyMultiplier) * multiplier).round();
+      xpDelta = -((basePenalty * penaltyMultiplier) * multiplier).round();
 
       todayLog.junkFoodIncidents++;
       todayLog.weskerImpact += weskerDelta;
 
-      if (weeklyJunkCount == 0) {
-        // First incident of the week — grace message
-        narrativeMessage =
-            '"One incident logged. The first costs less. The second will not." — Ada';
-      } else {
-        narrativeMessage =
-            '"You\'ve compromised your integrity. Wesker gains $weskerDelta points. This was avoidable."';
-      }
+      narrativeMessage = weeklyJunkCount == 0
+          ? '"One incident logged. The first costs less. The second will not." — Ada'
+          : '"You\'ve compromised your integrity. Wesker gains $weskerDelta points. This was avoidable."';
 
       await _ref.read(userProvider.notifier).addWeskerPower(weskerDelta);
       if (xpDelta < 0) {
         await _ref.read(userProvider.notifier).removeXP(-xpDelta);
       }
     } else {
-      // Check protein target hit
+      // Protein target hit check
       if (todayLog.proteinGrams >= 160 &&
           todayLog.proteinGrams - meal.proteinGrams < 160) {
         xpDelta = 40;
         await _ref.read(userProvider.notifier).addXP(40);
-        narrativeMessage =
-            '"Target acquired. Muscle synthesis confirmed. Proceed."';
-        characterId = 'ADA';
+        narrativeMessage = '"Target acquired. Muscle synthesis confirmed. Proceed."';
       }
     }
 
     await _saveToday(todayLog);
 
-    // Update junk free day tracking
     if (!meal.isJunkFood) {
       await _ref.read(userProvider.notifier).incrementJunkFreeDays();
     } else {
@@ -175,7 +187,7 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     );
   }
 
-  // ── Save ────────────────────────────────────────────────
+  // ── Persist ─────────────────────────────────────────────
 
   Future<void> _saveToday(NutritionLog updatedLog) async {
     final box = Hive.box<NutritionLog>('nutritionLogsBox');

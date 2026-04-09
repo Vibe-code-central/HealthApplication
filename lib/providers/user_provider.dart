@@ -11,7 +11,9 @@ final userProvider =
 class UserNotifier extends StateNotifier<UserProfile?> {
   UserNotifier() : super(null) {
     _loadProfile();
-    _runStartupChecks();
+    // Defer startup mutations — direct state writes during
+    // provider construction cause "tree building" errors in Riverpod.
+    Future.microtask(_runStartupChecks);
   }
 
   // ── Boot ─────────────────────────────────────────────────
