@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/theme/theme.dart';
 import 'core/storage/hive_setup.dart';
+import 'features/root/root_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +29,7 @@ class RequiemApp extends ConsumerWidget {
     return MaterialApp(
       title: 'Project Requiem',
       theme: RequiemTheme.darkTheme,
-      home: const Scaffold(
-        body: Center(
-          child: Text('REQUIEM M.V.P. INITIALIZED'),
-        ),
-      ),
+      home: const RootScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

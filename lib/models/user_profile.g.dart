@@ -28,13 +28,24 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       programmeStart: fields[8] as DateTime,
       currentStreak: fields[9] as int,
       longestStreak: fields[10] as int,
+      credibilityScore: fields[11] as int,
+      lastMealLogTime: fields[12] as DateTime?,
+      waterLogTimestamps: (fields[13] as List).cast<DateTime>(),
+      consecutivePerfectDays: fields[14] as int,
+      isRookiePhase: fields[15] as bool,
+      comebackStreakDays: fields[16] as int,
+      lastAppCloseTime: fields[17] as DateTime?,
+      lastWorkoutStartTime: fields[18] as DateTime?,
+      isSessionActive: fields[19] as bool,
+      lastClaimedSleepHours: fields[20] as double?,
+      junkFreeDayStreak: fields[21] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -56,7 +67,29 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       ..writeByte(9)
       ..write(obj.currentStreak)
       ..writeByte(10)
-      ..write(obj.longestStreak);
+      ..write(obj.longestStreak)
+      ..writeByte(11)
+      ..write(obj.credibilityScore)
+      ..writeByte(12)
+      ..write(obj.lastMealLogTime)
+      ..writeByte(13)
+      ..write(obj.waterLogTimestamps)
+      ..writeByte(14)
+      ..write(obj.consecutivePerfectDays)
+      ..writeByte(15)
+      ..write(obj.isRookiePhase)
+      ..writeByte(16)
+      ..write(obj.comebackStreakDays)
+      ..writeByte(17)
+      ..write(obj.lastAppCloseTime)
+      ..writeByte(18)
+      ..write(obj.lastWorkoutStartTime)
+      ..writeByte(19)
+      ..write(obj.isSessionActive)
+      ..writeByte(20)
+      ..write(obj.lastClaimedSleepHours)
+      ..writeByte(21)
+      ..write(obj.junkFreeDayStreak);
   }
 
   @override
