@@ -261,7 +261,7 @@ class _CooldownBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: RequiemColors.intelBlue.withOpacity(0.07),
-        border: Border(
+        border: const Border(
           left: BorderSide(color: RequiemColors.intelBlue, width: 2),
         ),
       ),
@@ -552,7 +552,7 @@ class _MealRow extends StatelessWidget {
                 onPressed: () async {
                   final ok =
                       await _confirmReverse(ctx, meal.description);
-                  if (ok == true) _doReverse(ctx);
+                  if (ok == true && ctx.mounted) _doReverse(ctx);
                 },
               ),
             ],

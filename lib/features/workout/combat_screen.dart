@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
 import '../../models/daily_task.dart';
 import '../../providers/daily_task_provider.dart';
-import '../../providers/user_provider.dart';
 
 class CombatScreen extends ConsumerStatefulWidget {
   const CombatScreen({super.key});
@@ -25,7 +24,6 @@ class _CombatScreenState extends ConsumerState<CombatScreen> {
   Widget build(BuildContext context) {
     final tasks = ref.watch(dailyTaskProvider);
     final notifier = ref.read(dailyTaskProvider.notifier);
-    final user = ref.watch(userProvider);
 
     // Only show workout tasks
     final workoutTasks = tasks

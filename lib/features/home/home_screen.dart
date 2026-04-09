@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
+import '../../core/score/score_service.dart';
 import '../../models/daily_task.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/daily_task_provider.dart';
+import '../../providers/nutrition_provider.dart';
+import '../../providers/achievement_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -14,6 +17,7 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(userProvider);
     final tasks = ref.watch(dailyTaskProvider);
     final notifier = ref.read(dailyTaskProvider.notifier);
+    final todayLog = ref.watch(nutritionProvider.notifier).getTodayLog();
 
     if (user == null || tasks.isEmpty) {
       return const Scaffold(
@@ -27,6 +31,23 @@ class HomeScreen extends ConsumerWidget {
     final totalCount = notifier.totalTasks;
     final dayLabel = notifier.dayLabel;
     final sortedTasks = notifier.byCategory;
+
+    final workoutDone = tasks.any((t) =>
+        t.category == DailyTaskCategory.mission && t.isCompleted);
+    final score = ScoreService.calculate(
+      tasksCompleted: completedCount,
+      tasksTotal: totalCount,
+      workoutDone: workoutDone,
+      proteinTargetHit: todayLog.proteinGrams >= 160,
+      zeroJunkToday: todayLog.junkFoodIncidents == 0,
+      waterTargetHit: todayLog.waterGlasses >= 6,
+      sleepLogged: user.lastClaimedSleepHours != null,
+      streakDays: user.currentStreak,
+    );
+
+    // Check achievements whenever home rebuilds
+    Future.microtask(() =>
+        ref.read(achievementProvider.notifier).checkAll());
 
     final grouped = <DailyTaskCategory, List<DailyTask>>{};
     for (final task in sortedTasks) {
@@ -60,7 +81,16 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
 
+          // ── Daily Score Card ─────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _ScoreCard(score: score, streak: user.currentStreak),
+            ),
+          ),
+
           // ── Task Sections ──────────────────────────────
+
           ...grouped.entries.expand((entry) => [
                 SliverToBoxAdapter(
                   child: ReDividerHeader(
@@ -411,3 +441,100 @@ class _WeskerPanel extends StatelessWidget {
     );
   }
 }
+
+// ── Daily Score Card ─────────────────────────────────────────────────────────
+
+class _ScoreCard extends StatelessWidget {
+  final DailyScore score;
+  final int streak;
+
+  const _ScoreCard({required this.score, required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final gradeColor = switch (score.grade) {
+      'S' => const Color(0xFFE5C76B), // gold
+      'A' => RequiemColors.operative,
+      'B' => RequiemColors.gold,
+      'C' => RequiemColors.intelBlue,
+      'D' => RequiemColors.ember,
+      _ => RequiemColors.bsaaRed,
+    };
+
+    return RePanel(
+      borderColor: gradeColor.withOpacity(0.5),
+      child: Row(
+        children: [
+          // Big grade circle
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              border: Border.all(color: gradeColor, width: 2),
+              color: gradeColor.withOpacity(0.08),
+            ),
+            child: Center(
+              child: Text(
+                score.grade,
+                style: GoogleFonts.bebasNeue(
+                    color: gradeColor, fontSize: 36, letterSpacing: 1),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Score + breakdown
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'DAILY SCORE',
+                      style: GoogleFonts.barlowCondensed(
+                          color: RequiemColors.textSecondary,
+                          fontSize: 10,
+                          letterSpacing: 2),
+                    ),
+                    const Spacer(),
+                    if (score.xpMultiplier > 100)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                              color: RequiemColors.ember.withOpacity(0.6)),
+                          color: RequiemColors.ember.withOpacity(0.1),
+                        ),
+                        child: Text(
+                          '${ScoreService.multiplierLabel(score.xpMultiplier)} STREAK',
+                          style: GoogleFonts.barlowCondensed(
+                              color: RequiemColors.ember,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${score.score} / 100',
+                  style: GoogleFonts.bebasNeue(
+                      color: gradeColor, fontSize: 22, letterSpacing: 1),
+                ),
+                const SizedBox(height: 4),
+                ReStatusBar(
+                    value: score.score / 100,
+                    color: gradeColor,
+                    height: 4),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

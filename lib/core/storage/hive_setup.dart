@@ -6,6 +6,7 @@ import '../../models/muscle_progress.dart';
 import '../../models/recovery_log.dart';
 import '../../models/character_event.dart';
 import '../../models/weekly_challenge.dart';
+import '../../models/achievement.dart';
 
 class HiveSetup {
   static Future<void> init() async {
@@ -20,6 +21,7 @@ class HiveSetup {
     Hive.registerAdapter(RecoveryLogAdapter());
     Hive.registerAdapter(CharacterEventAdapter());
     Hive.registerAdapter(WeeklyChallengeAdapter());
+    Hive.registerAdapter(AchievementAdapter());
 
     // Open Boxes
     await Hive.openBox<UserProfile>('userProfileBox');
@@ -29,5 +31,7 @@ class HiveSetup {
     await Hive.openBox<RecoveryLog>('recoveryLogsBox');
     await Hive.openBox<CharacterEvent>('characterEventsBox');
     await Hive.openBox<WeeklyChallenge>('weeklyChallengeBox');
+    await Hive.openBox<Achievement>('achievementsBox');
   }
 }
+

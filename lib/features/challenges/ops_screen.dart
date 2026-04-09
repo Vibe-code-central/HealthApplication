@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
 import '../../providers/daily_task_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/achievement_provider.dart';
 import '../../models/daily_task.dart';
+import '../../models/achievement.dart';
 
 class OpsScreen extends ConsumerWidget {
   const OpsScreen({super.key});
@@ -158,6 +160,17 @@ class OpsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _WeeklyChallenge(),
+          ),
+
+          // ── Achievements ──────────────────────────────
+          const ReDividerHeader(
+            label: 'ACHIEVEMENTS',
+            color: RequiemColors.gold,
+            icon: Icons.emoji_events,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: _AchievementGallery(),
           ),
 
           // ── HUNK Terminal ────────────────────────────────
@@ -327,5 +340,258 @@ class _HunkTerminal extends StatelessWidget {
     if (power >= 50) return '"Performance gaps detected. Tighten up, operative."';
     if (power >= 20) return '"Wesker contained. Maintain pressure."';
     return '"Target under control. This is the mission." — HUNK';
+  }
+}
+
+// ── Achievement Gallery ──────────────────────────────────────────────────────
+
+class _AchievementGallery extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final achievements = ref.watch(achievementProvider);
+    final unlockedCount = achievements.where((a) => a.isUnlocked).length;
+    final total = achievements.length;
+
+    if (achievements.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    const tiers = ['REQUIEM', 'GOLD', 'SILVER', 'BRONZE'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Progress summary
+        RePanel(
+          borderColor: RequiemColors.gold.withOpacity(0.4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$unlockedCount / $total UNLOCKED',
+                        style: GoogleFonts.bebasNeue(
+                            color: RequiemColors.gold,
+                            fontSize: 22,
+                            letterSpacing: 1)),
+                    const SizedBox(height: 6),
+                    ReStatusBar(
+                        value: total == 0 ? 0 : unlockedCount / total,
+                        color: RequiemColors.gold,
+                        height: 5),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                children: [
+                  const Icon(Icons.emoji_events,
+                      color: RequiemColors.gold, size: 32),
+                  Text('MEDALS',
+                      style: GoogleFonts.barlowCondensed(
+                          color: RequiemColors.textSecondary,
+                          fontSize: 9,
+                          letterSpacing: 1.5)),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Tier groups
+        ...tiers.map((tier) {
+          final list =
+              achievements.where((a) => a.tier == tier).toList();
+          if (list.isEmpty) return const SizedBox.shrink();
+
+          final tierColor = switch (tier) {
+            'REQUIEM' => const Color(0xFFB44BE5),
+            'GOLD' => RequiemColors.gold,
+            'SILVER' => RequiemColors.textPrimary,
+            _ => RequiemColors.ember,
+          };
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    color: tierColor,
+                    margin: const EdgeInsets.only(right: 8),
+                  ),
+                  Text(tier,
+                      style: GoogleFonts.barlowCondensed(
+                          color: tierColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2)),
+                ]),
+              ),
+              ...list.map((achievement) =>
+                  _AchievementTile(achievement: achievement)),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _AchievementTile extends StatelessWidget {
+  final Achievement achievement;
+  const _AchievementTile({required this.achievement});
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = achievement.isUnlocked;
+    final tierColor = switch (achievement.tier) {
+      'REQUIEM' => const Color(0xFFB44BE5),
+      'GOLD' => RequiemColors.gold,
+      'SILVER' => RequiemColors.textPrimary,
+      _ => RequiemColors.ember,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: unlocked
+              ? tierColor.withOpacity(0.06)
+              : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+                color: unlocked ? tierColor : RequiemColors.textMuted,
+                width: 2),
+            top: BorderSide(
+                color: unlocked
+                    ? tierColor.withOpacity(0.3)
+                    : RequiemColors.border,
+                width: 1),
+            right: BorderSide(
+                color: unlocked
+                    ? tierColor.withOpacity(0.3)
+                    : RequiemColors.border,
+                width: 1),
+            bottom: BorderSide(
+                color: unlocked
+                    ? tierColor.withOpacity(0.3)
+                    : RequiemColors.border,
+                width: 1),
+          ),
+        ),
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  border: Border.all(
+                    color: unlocked
+                        ? tierColor
+                        : RequiemColors.textMuted,
+                    width: 1.5,
+                  ),
+                  color: unlocked
+                      ? tierColor.withOpacity(0.12)
+                      : RequiemColors.tertiarySurface,
+                ),
+                child: Icon(
+                  unlocked ? Icons.emoji_events : Icons.lock_outline,
+                  color: unlocked
+                      ? tierColor
+                      : RequiemColors.textMuted,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      unlocked
+                          ? achievement.title
+                          : '??? ${achievement.tier}',
+                      style: GoogleFonts.barlowCondensed(
+                        color: unlocked
+                            ? tierColor
+                            : RequiemColors.textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    Text(
+                      unlocked
+                          ? achievement.description
+                          : 'Complete hidden conditions to unlock.',
+                      style: GoogleFonts.barlow(
+                        color: unlocked
+                            ? RequiemColors.textSecondary
+                            : RequiemColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (unlocked && achievement.narrativeQuote.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          achievement.narrativeQuote,
+                          style: GoogleFonts.barlow(
+                            color: tierColor.withOpacity(0.7),
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // XP badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                      color: unlocked
+                          ? tierColor.withOpacity(0.5)
+                          : RequiemColors.textMuted.withOpacity(0.3)),
+                  color: unlocked
+                      ? tierColor.withOpacity(0.1)
+                      : Colors.transparent,
+                ),
+                child: Text(
+                  '+${achievement.xpReward}',
+                  style: GoogleFonts.barlowCondensed(
+                    color: unlocked
+                        ? tierColor
+                        : RequiemColors.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
