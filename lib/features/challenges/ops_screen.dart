@@ -169,14 +169,16 @@ class OpsScreen extends ConsumerWidget {
                   children: [
                     const Icon(Icons.shopping_cart_checkout, color: RequiemColors.gold),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('ACCESS REQUISITIONS', style: GoogleFonts.bebasNeue(fontSize: 20, color: RequiemColors.textPrimary)),
-                        Text('Spend Gold on passive upgrades.', style: GoogleFonts.barlowCondensed(color: RequiemColors.textSecondary, fontSize: 12)),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ACCESS REQUISITIONS', style: GoogleFonts.bebasNeue(fontSize: 20, color: RequiemColors.textPrimary)),
+                          Text('Spend Gold on passive upgrades.', style: GoogleFonts.barlowCondensed(color: RequiemColors.textSecondary, fontSize: 12), overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       color: RequiemColors.gold.withOpacity(0.1),

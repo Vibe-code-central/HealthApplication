@@ -80,17 +80,17 @@ class UserProfile {
   double? lastClaimedSleepHours;
 
   /// Count of junk-free days in rolling 7-day window (for Wesker commentary).
-  @HiveField(21)
+  @HiveField(21, defaultValue: 0)
   int junkFreeDayStreak;
 
   // ── Tactical Logistics ──────────────────────────────
   
   /// In-game currency used to buy requisitions.
-  @HiveField(22)
+  @HiveField(22, defaultValue: 0)
   int gold;
 
   /// Map of buff_id -> expiration timestamp (or null for permanent/consumables).
-  @HiveField(23)
+  @HiveField(23, defaultValue: {})
   Map<String, DateTime?> unlockedBuffs;
 
   UserProfile({

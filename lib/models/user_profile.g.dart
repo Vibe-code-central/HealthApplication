@@ -38,9 +38,11 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       lastWorkoutStartTime: fields[18] as DateTime?,
       isSessionActive: fields[19] as bool,
       lastClaimedSleepHours: fields[20] as double?,
-      junkFreeDayStreak: fields[21] as int,
-      gold: fields[22] as int,
-      unlockedBuffs: (fields[23] as Map).cast<String, DateTime?>(),
+      junkFreeDayStreak: fields[21] == null ? 0 : fields[21] as int,
+      gold: fields[22] == null ? 0 : fields[22] as int,
+      unlockedBuffs: fields[23] == null
+          ? {}
+          : (fields[23] as Map).cast<String, DateTime?>(),
     );
   }
 
