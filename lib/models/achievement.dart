@@ -21,7 +21,7 @@ enum AchievementId {
   legend,             // Reach level 25
 }
 
-@HiveType(typeId: 2)
+@HiveType(typeId: 10)
 class Achievement {
   @HiveField(0)
   final String id; // AchievementId.name
