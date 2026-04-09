@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
 import '../../models/daily_task.dart';
 import '../../providers/user_provider.dart';
@@ -14,139 +15,130 @@ class HomeScreen extends ConsumerWidget {
     final tasks = ref.watch(dailyTaskProvider);
     final notifier = ref.read(dailyTaskProvider.notifier);
 
-    if (user == null) {
-      return const Center(
-          child: CircularProgressIndicator(color: RequiemColors.bsaaRed));
+    if (user == null || tasks.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: RequiemColors.bsaaRed),
+        ),
+      );
     }
 
     final completedCount = notifier.completedCount;
     final totalCount = notifier.totalTasks;
-    final percent = notifier.completionPercent;
     final dayLabel = notifier.dayLabel;
     final sortedTasks = notifier.byCategory;
 
-    // Group tasks by category for sections
     final grouped = <DailyTaskCategory, List<DailyTask>>{};
     for (final task in sortedTasks) {
       grouped.putIfAbsent(task.category, () => []).add(task);
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('LEVEL ${user.level} — ${_avatarLabel(user.avatarState)}'),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Row(
-                children: [
-                  const Text('🔥', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${user.currentStreak}d',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(color: RequiemColors.gold),
-                  ),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
+      backgroundColor: RequiemColors.primaryBackground,
       body: CustomScrollView(
         slivers: [
-          // ── Day Header ─────────────────────────────────
-          SliverToBoxAdapter(
-            child: _DayHeader(
-              dayLabel: dayLabel,
-              completedCount: completedCount,
-              totalCount: totalCount,
-              percent: percent,
-              weskerPower: user.weskerPower,
-              context: context,
+          // ── Tactical App Bar ──────────────────────────
+          SliverAppBar(
+            floating: true,
+            backgroundColor: RequiemColors.primaryBackground,
+            expandedHeight: 120,
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.pin,
+              background: _TacticalHeader(
+                dayLabel: dayLabel,
+                completed: completedCount,
+                total: totalCount,
+                percent: notifier.completionPercent,
+                level: user.level,
+                streak: user.currentStreak,
+                avatarState: user.avatarState,
+              ),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Container(height: 1, color: RequiemColors.bsaaRed.withOpacity(0.5)),
             ),
           ),
 
-          // ── Task Sections ───────────────────────────────
-          ...grouped.entries.expand((entry) {
-            final category = entry.key;
-            final categoryTasks = entry.value;
-            return [
-              SliverToBoxAdapter(
-                child: _SectionHeader(category: category),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) {
-                    final task = categoryTasks[i];
-                    return _TaskTile(
-                      task: task,
-                      onToggle: () =>
-                          ref.read(dailyTaskProvider.notifier).toggleTask(task.id),
-                    );
-                  },
-                  childCount: categoryTasks.length,
+          // ── Task Sections ──────────────────────────────
+          ...grouped.entries.expand((entry) => [
+                SliverToBoxAdapter(
+                  child: ReDividerHeader(
+                    label: entry.key.label,
+                    color: _categoryColor(entry.key),
+                    icon: _categoryIcon(entry.key),
+                  ),
                 ),
-              ),
-            ];
-          }),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) {
+                      final task = entry.value[i];
+                      return _ReTile(
+                        task: task,
+                        onToggle: () => ref
+                            .read(dailyTaskProvider.notifier)
+                            .toggleTask(task.id),
+                      );
+                    },
+                    childCount: entry.value.length,
+                  ),
+                ),
+              ]),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-          // ── Wesker Status ───────────────────────────────
+          // ── Wesker Panel ───────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _WeskerCard(
-                weskerPower: user.weskerPower,
-                context: context,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+              child: _WeskerPanel(weskerPower: user.weskerPower),
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
   }
 
-  String _avatarLabel(int state) {
-    const labels = [
-      'Raccoon City Rookie',
-      'Field Agent',
-      'Government Operative',
-      'Veteran Operative',
-      'Elite Operative',
-      'Requiem Warrior',
-      'REQUIEM',
-    ];
-    return state < labels.length ? labels[state].toUpperCase() : 'OPERATIVE';
-  }
+  Color _categoryColor(DailyTaskCategory cat) => switch (cat) {
+        DailyTaskCategory.workout => RequiemColors.operative,
+        DailyTaskCategory.nutrition => RequiemColors.gold,
+        DailyTaskCategory.hydration => RequiemColors.intelBlue,
+        DailyTaskCategory.recovery => RequiemColors.shadow,
+        DailyTaskCategory.mission => RequiemColors.bsaaRed,
+      };
+
+  IconData _categoryIcon(DailyTaskCategory cat) => switch (cat) {
+        DailyTaskCategory.workout => Icons.fitness_center,
+        DailyTaskCategory.nutrition => Icons.restaurant,
+        DailyTaskCategory.hydration => Icons.water_drop,
+        DailyTaskCategory.recovery => Icons.bedtime,
+        DailyTaskCategory.mission => Icons.flag,
+      };
 }
 
-// ── Day Header ──────────────────────────────────────────────────────────────
+// ── Tactical Header ─────────────────────────────────────────────────────────
 
-class _DayHeader extends StatelessWidget {
+class _TacticalHeader extends StatelessWidget {
   final String dayLabel;
-  final int completedCount;
-  final int totalCount;
+  final int completed;
+  final int total;
   final double percent;
-  final int weskerPower;
-  final BuildContext context;
+  final int level;
+  final int streak;
+  final int avatarState;
 
-  const _DayHeader({
+  const _TacticalHeader({
     required this.dayLabel,
-    required this.completedCount,
-    required this.totalCount,
+    required this.completed,
+    required this.total,
     required this.percent,
-    required this.weskerPower,
-    required this.context,
+    required this.level,
+    required this.streak,
+    required this.avatarState,
   });
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     final color = percent == 1.0
         ? RequiemColors.operative
         : percent > 0.5
@@ -154,58 +146,49 @@ class _DayHeader extends StatelessWidget {
             : RequiemColors.bsaaRed;
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: RequiemColors.secondarySurface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
+      color: RequiemColors.primaryBackground,
+      padding: const EdgeInsets.fromLTRB(16, 52, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            dayLabel,
-            style: Theme.of(ctx)
-                .textTheme
-                .headlineMedium
-                ?.copyWith(color: color),
-          ),
-          const SizedBox(height: 12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: percent,
-                    minHeight: 10,
-                    backgroundColor: RequiemColors.tertiarySurface,
+                child: Text(
+                  dayLabel,
+                  style: GoogleFonts.bebasNeue(
                     color: color,
+                    fontSize: 18,
+                    letterSpacing: 2,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                '$completedCount / $totalCount',
-                style: Theme.of(ctx)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: color),
-              ),
+              _StatChip('LVL $level', RequiemColors.bsaaRed),
+              const SizedBox(width: 8),
+              _StatChip('🔥 ${streak}d', RequiemColors.ember),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            percent == 1.0
-                ? '"All objectives cleared. Leon Kennedy — mission complete." — Chris'
-                : percent > 0.5
-                    ? '"Over halfway. Don\'t slow down now, Kennedy."'
-                    : '"Objectives pending. Get moving, operative."',
-            style: Theme.of(ctx)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: RequiemColors.textSecondary),
+          Row(
+            children: [
+              Expanded(
+                child: ReStatusBar(value: percent, color: color, height: 6),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '$completed/$total',
+                style: GoogleFonts.barlowCondensed(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -213,47 +196,27 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-// ── Section Header ──────────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  final DailyTaskCategory category;
-
-  const _SectionHeader({required this.category});
+class _StatChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _StatChip(this.label, this.color);
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (category) {
-      DailyTaskCategory.workout => RequiemColors.operative,
-      DailyTaskCategory.nutrition => RequiemColors.gold,
-      DailyTaskCategory.hydration => RequiemColors.intelBlue,
-      DailyTaskCategory.recovery => RequiemColors.shadow,
-      DailyTaskCategory.mission => RequiemColors.bsaaRed,
-    };
-
-    final icon = switch (category) {
-      DailyTaskCategory.workout => Icons.fitness_center,
-      DailyTaskCategory.nutrition => Icons.restaurant,
-      DailyTaskCategory.hydration => Icons.water_drop,
-      DailyTaskCategory.recovery => Icons.bedtime,
-      DailyTaskCategory.mission => Icons.flag,
-    };
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            category.label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: color,
-                  letterSpacing: 2,
-                ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Divider(color: color.withOpacity(0.3))),
-        ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.6), width: 1),
+        color: color.withOpacity(0.08),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.barlowCondensed(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1,
+        ),
       ),
     );
   }
@@ -261,17 +224,16 @@ class _SectionHeader extends StatelessWidget {
 
 // ── Task Tile ───────────────────────────────────────────────────────────────
 
-class _TaskTile extends StatelessWidget {
+class _ReTile extends StatelessWidget {
   final DailyTask task;
   final VoidCallback onToggle;
 
-  const _TaskTile({required this.task, required this.onToggle});
+  const _ReTile({required this.task, required this.onToggle});
 
   @override
   Widget build(BuildContext context) {
     final isCompleted = task.isCompleted;
-
-    final checkColor = switch (task.category) {
+    final color = switch (task.category) {
       DailyTaskCategory.workout => RequiemColors.operative,
       DailyTaskCategory.nutrition => RequiemColors.gold,
       DailyTaskCategory.hydration => RequiemColors.intelBlue,
@@ -279,36 +241,41 @@ class _TaskTile extends StatelessWidget {
       DailyTaskCategory.mission => RequiemColors.bsaaRed,
     };
 
-    return AnimatedOpacity(
-      opacity: isCompleted ? 0.55 : 1.0,
-      duration: const Duration(milliseconds: 250),
-      child: InkWell(
-        onTap: onToggle,
+    return InkWell(
+      onTap: onToggle,
+      splashColor: color.withOpacity(0.08),
+      highlightColor: color.withOpacity(0.04),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isCompleted ? color.withOpacity(0.04) : Colors.transparent,
+          border: Border(
+            bottom: BorderSide(
+                color: RequiemColors.border.withOpacity(0.6), width: 1),
+            left: BorderSide(
+                color: isCompleted ? color : Colors.transparent, width: 2),
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Checkbox
-              Container(
-                width: 24,
-                height: 24,
-                margin: const EdgeInsets.only(top: 2, right: 12),
+              // RE-style square checkbox
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 20,
+                height: 20,
+                margin: const EdgeInsets.only(right: 14),
                 decoration: BoxDecoration(
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: isCompleted
-                        ? checkColor
-                        : checkColor.withOpacity(0.5),
-                    width: 2,
+                    color: isCompleted ? color : color.withOpacity(0.45),
+                    width: 1.5,
                   ),
-                  color: isCompleted
-                      ? checkColor.withOpacity(0.2)
-                      : Colors.transparent,
+                  color: isCompleted ? color : Colors.transparent,
                 ),
                 child: isCompleted
-                    ? Icon(Icons.check, size: 16, color: checkColor)
+                    ? const Icon(Icons.check, size: 14, color: Colors.black)
                     : null,
               ),
 
@@ -319,22 +286,26 @@ class _TaskTile extends StatelessWidget {
                   children: [
                     Text(
                       task.title,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            decoration: isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: isCompleted
-                                ? RequiemColors.textMuted
-                                : null,
-                          ),
+                      style: GoogleFonts.barlow(
+                        color: isCompleted
+                            ? RequiemColors.textSecondary
+                            : RequiemColors.textPrimary,
+                        fontSize: 14,
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                        decorationColor: RequiemColors.textSecondary,
+                      ),
                     ),
                     if (task.subtitle != null)
                       Text(
                         task.subtitle!,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: RequiemColors.textSecondary),
+                        style: GoogleFonts.barlowCondensed(
+                          color: RequiemColors.textMuted
+                              .withOpacity(isCompleted ? 0.5 : 1.0),
+                          fontSize: 11,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                   ],
                 ),
@@ -345,19 +316,23 @@ class _TaskTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: checkColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
+                  color: isCompleted
+                      ? Colors.transparent
+                      : color.withOpacity(0.12),
                   border: Border.all(
-                      color: checkColor.withOpacity(0.3), width: 1),
+                    color: isCompleted
+                        ? RequiemColors.textMuted.withOpacity(0.3)
+                        : color.withOpacity(0.4),
+                    width: 1,
+                  ),
                 ),
                 child: Text(
                   '+${task.xpReward}',
-                  style: TextStyle(
+                  style: GoogleFonts.barlowCondensed(
+                    color: isCompleted ? RequiemColors.textMuted : color,
                     fontSize: 11,
-                    color: isCompleted
-                        ? RequiemColors.textMuted
-                        : checkColor,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
@@ -369,68 +344,67 @@ class _TaskTile extends StatelessWidget {
   }
 }
 
-// ── Wesker Card ─────────────────────────────────────────────────────────────
+// ── Wesker Threat Panel ──────────────────────────────────────────────────────
 
-class _WeskerCard extends StatelessWidget {
+class _WeskerPanel extends StatelessWidget {
   final int weskerPower;
-  final BuildContext context;
-
-  const _WeskerCard({required this.weskerPower, required this.context});
+  const _WeskerPanel({required this.weskerPower});
 
   @override
-  Widget build(BuildContext ctx) {
-    final String commentary;
-    if (weskerPower >= 90) {
-      commentary = '"You were never worthy of the Requiem, Kennedy."';
-    } else if (weskerPower >= 60) {
-      commentary = '"Already faltering? Disappointing."';
-    } else if (weskerPower >= 30) {
-      commentary = '"Already faltering, Mr. Kennedy?"';
-    } else {
-      commentary = '"Contained. For now."';
-    }
+  Widget build(BuildContext context) {
+    final commentary = switch (weskerPower) {
+      >= 90 => '"You were never worthy of the Requiem, Kennedy."',
+      >= 60 => '"Already faltering? How disappointing."',
+      >= 30 => '"Already faltering, Mr. Kennedy?"',
+      _ => '"Contained. For now."',
+    };
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: RequiemColors.wesker.withOpacity(0.05),
-        border: Border.all(color: RequiemColors.wesker.withOpacity(0.4)),
-        borderRadius: BorderRadius.circular(6),
-      ),
+    final barColor = weskerPower >= 70
+        ? RequiemColors.bsaaRed
+        : weskerPower >= 40
+            ? RequiemColors.ember
+            : RequiemColors.wesker;
+
+    return RePanel(
+      borderColor: RequiemColors.wesker.withOpacity(0.45),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.visibility,
-                  color: RequiemColors.wesker, size: 16),
+              const Icon(Icons.remove_red_eye_outlined,
+                  color: RequiemColors.wesker, size: 14),
               const SizedBox(width: 8),
               Text(
-                'WESKER THREAT — $weskerPower%',
-                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
-                      color: RequiemColors.wesker,
-                      letterSpacing: 1.5,
-                    ),
+                'WESKER THREAT ASSESSMENT',
+                style: GoogleFonts.barlowCondensed(
+                  color: RequiemColors.wesker,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.5,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$weskerPower%',
+                style: GoogleFonts.bebasNeue(
+                  color: barColor,
+                  fontSize: 22,
+                  letterSpacing: 1,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: weskerPower / 100,
-              minHeight: 8,
-              backgroundColor: RequiemColors.tertiarySurface,
-              color: RequiemColors.wesker,
-            ),
-          ),
-          const SizedBox(height: 6),
+          ReStatusBar(value: weskerPower / 100, color: barColor, height: 6),
+          const SizedBox(height: 8),
           Text(
             commentary,
-            style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                  color: RequiemColors.textSecondary,
-                  fontStyle: FontStyle.italic,
-                ),
+            style: GoogleFonts.barlow(
+              color: RequiemColors.textSecondary,
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
