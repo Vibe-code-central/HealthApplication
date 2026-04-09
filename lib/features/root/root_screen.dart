@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
@@ -39,6 +41,31 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
+
+    // ── Cinematic Feedback Listeners ───────────────────────
+    ref.listen(userProvider, (previous, next) {
+      if (previous == null || next == null) return;
+
+      // 1. Level Up Detected
+      if (next.level > previous.level) {
+        _triggerCinematic(
+          'CLEARANCE UPGRADED\nLVL ${next.level}',
+          RequiemColors.gold,
+          'NEW TACTICAL OPTIONS AVAILABLE',
+        );
+      }
+
+      // 2. Streak Broken Detected
+      if (next.currentStreak == 0 && previous.currentStreak > 0) {
+        _triggerCinematic(
+          'STREAK BROKEN.\nMISSION COMPROMISED.',
+          RequiemColors.bsaaRed,
+          'WESKER INFLUENCE SPREADING.',
+          isError: true,
+        );
+      }
+    });
+
     if (user == null) return const OnboardingScreen();
 
     return Scaffold(
@@ -52,6 +79,75 @@ class _RootScreenState extends ConsumerState<RootScreen> {
         onTap: (i) => setState(() => _currentIndex = i),
       ),
     );
+  }
+
+  // ── Cinematic Overlay Engine ───────────────────────────────────────────────
+  void _triggerCinematic(String mainText, Color color, String subText,
+      {bool isError = false}) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (context) => Positioned.fill(
+        child: Material(
+          color: Colors.black.withOpacity(0.85),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isError ? Icons.warning_amber_rounded : Icons.shield,
+                  color: color,
+                  size: 64,
+                )
+                    .animate(onPlay: (controller) => controller.repeat())
+                    .shimmer(
+                        duration: 1200.ms, color: Colors.white.withOpacity(0.5))
+                    .shake(hz: isError ? 4 : 0, curve: Curves.easeInOutCubic),
+                const SizedBox(height: 24),
+                Text(
+                  mainText,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.bebasNeue(
+                    color: color,
+                    fontSize: 42,
+                    letterSpacing: 4,
+                  ),
+                ).animate().fadeIn(duration: 400.ms).scale(
+                    begin: const Offset(0.8, 0.8),
+                    duration: 400.ms,
+                    curve: Curves.easeOutBack),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: color.withOpacity(0.5)),
+                    color: color.withOpacity(0.1),
+                  ),
+                  child: Text(
+                    subText,
+                    style: GoogleFonts.robotoMono(
+                      color: RequiemColors.textPrimary,
+                      fontSize: 12,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 300.ms)
+                    .slideY(begin: 0.5, duration: 400.ms, curve: Curves.easeOut),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(entry);
+    // Remove after 3 seconds
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) entry.remove();
+    });
   }
 }
 

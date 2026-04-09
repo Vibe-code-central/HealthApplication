@@ -19,7 +19,9 @@ class DailyTaskNotifier extends StateNotifier<List<DailyTask>> {
 
   Future<void> _init() async {
     final today = DateTime.now();
-    final tasks = DailyTaskGenerator.generateFor(today);
+    final user = _ref.read(userProvider);
+    final weskerPower = user?.weskerPower ?? 0;
+    final tasks = DailyTaskGenerator.generateFor(today, weskerPower: weskerPower);
 
     // Load persisted completions for today
     final prefs = await SharedPreferences.getInstance();

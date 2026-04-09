@@ -36,6 +36,7 @@ enum DailyTaskCategory {
   hydration,
   recovery,
   mission,
+  nemesis,
 }
 
 extension DailyTaskCategoryX on DailyTaskCategory {
@@ -51,6 +52,8 @@ extension DailyTaskCategoryX on DailyTaskCategory {
         return 'RECOVERY';
       case DailyTaskCategory.mission:
         return 'MISSION';
+      case DailyTaskCategory.nemesis:
+        return 'NEMESIS PURSUIT';
     }
   }
 }
@@ -59,8 +62,7 @@ extension DailyTaskCategoryX on DailyTaskCategory {
 
 /// Workout programme — day-of-week mapped to exercises.
 class DailyTaskGenerator {
-  /// Returns the full checklist for [date].
-  static List<DailyTask> generateFor(DateTime date) {
+  static List<DailyTask> generateFor(DateTime date, {int weskerPower = 0}) {
     final tasks = <DailyTask>[];
 
     // ── Workout tasks (day-specific) ────────────────────
@@ -71,6 +73,11 @@ class DailyTaskGenerator {
 
     // ── Recovery tasks (same every day) ────────────────
     tasks.addAll(_recoveryTasks());
+
+    // ── Nemesis Pursuit ────────────────────────────────
+    if (weskerPower >= 60) {
+      tasks.add(_generateNemesis(date));
+    }
 
     return tasks;
   }
@@ -248,4 +255,36 @@ class DailyTaskGenerator {
         xpReward: xp,
         weskerPenalty: weskerPenalty,
       );
+
+  static DailyTask _generateNemesis(DateTime date) {
+    // Deterministic random so the task doesn't flip out during the same day
+    final seed = date.year * 1000 + date.month * 100 + date.day;
+    final options = [
+      DailyTask(
+        id: 'nemesis_1',
+        title: 'NEMESIS SPAWNED: 50 Burpees',
+        subtitle: 'Wesker influence critical. Containment required.',
+        category: DailyTaskCategory.nemesis,
+        xpReward: 200,
+        weskerPenalty: 40,
+      ),
+      DailyTask(
+        id: 'nemesis_2',
+        title: 'NEMESIS SPAWNED: 100 Push-ups',
+        subtitle: 'Neutralize the threat immediately.',
+        category: DailyTaskCategory.nemesis,
+        xpReward: 200,
+        weskerPenalty: 40,
+      ),
+      DailyTask(
+        id: 'nemesis_3',
+        title: 'NEMESIS SPAWNED: 5 Min Plank Hold',
+        subtitle: 'Hold the line. Do not break.',
+        category: DailyTaskCategory.nemesis,
+        xpReward: 200,
+        weskerPenalty: 40,
+      ),
+    ];
+    return options[seed % options.length];
+  }
 }

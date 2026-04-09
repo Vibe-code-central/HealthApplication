@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
@@ -38,8 +39,10 @@ class BsaaFileScreen extends ConsumerWidget {
                                   color: RequiemColors.bsaaRed, width: 1.5),
                               color: RequiemColors.tertiarySurface,
                             ),
-                            child: const Icon(Icons.person_outline,
-                                color: RequiemColors.bsaaRed, size: 36),
+                            child: const Icon(Icons.radar,
+                                color: RequiemColors.bsaaRed, size: 36)
+                                .animate(onPlay: (controller) => controller.repeat())
+                                .rotate(duration: 4.seconds, curve: Curves.linear),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -53,7 +56,9 @@ class BsaaFileScreen extends ConsumerWidget {
                                     fontSize: 26,
                                     letterSpacing: 2,
                                   ),
-                                ),
+                                )
+                                    .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                                    .shimmer(duration: 3.seconds, color: RequiemColors.bsaaRed.withOpacity(0.3)),
                                 Text(
                                   _avatarLabel(user.avatarState),
                                   style: GoogleFonts.barlowCondensed(
@@ -185,7 +190,10 @@ class BsaaFileScreen extends ConsumerWidget {
                             color: RequiemColors.textSecondary,
                             fontSize: 12,
                             fontStyle: FontStyle.italic),
-                      ),
+                      ).animate(onPlay: (controller) => controller.repeat()).shimmer(
+                          color: RequiemColors.wesker,
+                          duration: const Duration(seconds: 2),
+                          blendMode: BlendMode.srcATop),
                     ],
                   ),
                 ),

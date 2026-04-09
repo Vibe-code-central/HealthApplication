@@ -135,6 +135,7 @@ class HomeScreen extends ConsumerWidget {
         DailyTaskCategory.hydration => RequiemColors.intelBlue,
         DailyTaskCategory.recovery => RequiemColors.shadow,
         DailyTaskCategory.mission => RequiemColors.bsaaRed,
+        DailyTaskCategory.nemesis => RequiemColors.wesker,
       };
 
   IconData _categoryIcon(DailyTaskCategory cat) => switch (cat) {
@@ -143,6 +144,7 @@ class HomeScreen extends ConsumerWidget {
         DailyTaskCategory.hydration => Icons.water_drop,
         DailyTaskCategory.recovery => Icons.bedtime,
         DailyTaskCategory.mission => Icons.flag,
+        DailyTaskCategory.nemesis => Icons.warning,
       };
 }
 
@@ -269,6 +271,7 @@ class _ReTile extends StatelessWidget {
       DailyTaskCategory.hydration => RequiemColors.intelBlue,
       DailyTaskCategory.recovery => RequiemColors.shadow,
       DailyTaskCategory.mission => RequiemColors.bsaaRed,
+      DailyTaskCategory.nemesis => RequiemColors.wesker,
     };
 
     return InkWell(
