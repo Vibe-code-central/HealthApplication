@@ -83,6 +83,16 @@ class UserProfile {
   @HiveField(21)
   int junkFreeDayStreak;
 
+  // ── Tactical Logistics ──────────────────────────────
+  
+  /// In-game currency used to buy requisitions.
+  @HiveField(22)
+  int gold;
+
+  /// Map of buff_id -> expiration timestamp (or null for permanent/consumables).
+  @HiveField(23)
+  Map<String, DateTime?> unlockedBuffs;
+
   UserProfile({
     required this.name,
     required this.startingWeight,
@@ -106,5 +116,7 @@ class UserProfile {
     this.isSessionActive = false,
     this.lastClaimedSleepHours,
     this.junkFreeDayStreak = 0,
+    this.gold = 0,
+    this.unlockedBuffs = const {},
   });
 }

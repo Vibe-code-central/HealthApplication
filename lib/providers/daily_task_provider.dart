@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/daily_task.dart';
 import 'user_provider.dart';
+import 'weekly_challenge_provider.dart';
 
 final dailyTaskProvider =
     StateNotifierProvider<DailyTaskNotifier, List<DailyTask>>((ref) {
@@ -60,12 +61,19 @@ class DailyTaskNotifier extends StateNotifier<List<DailyTask>> {
     // Persist
     await _persistCompletions(updated);
 
-    // Award / revoke XP
+    // Award / revoke XP and Gold
     if (nowCompleted) {
       await _ref.read(userProvider.notifier).addXP(task.xpReward);
+      await _ref.read(userProvider.notifier).addGold(10);
+      
+      // If it's a mission or workout session, advance weekly challenge
+      if (task.id == 'wk_session') {
+        await _ref.read(weeklyChallengeProvider.notifier).incrementProgress();
+      }
     } else {
       // Un-checking refunds XP so users can correct accidental ticks
       await _ref.read(userProvider.notifier).removeXP(task.xpReward);
+      await _ref.read(userProvider.notifier).addGold(-10);
     }
   }
 

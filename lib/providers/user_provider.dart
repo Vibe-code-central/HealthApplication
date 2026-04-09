@@ -92,6 +92,20 @@ class UserNotifier extends StateNotifier<UserProfile?> {
     await _calculateAvatarState();
   }
 
+  Future<void> addGold(int amount) async {
+    if (state == null) return;
+    var s = state!;
+    s.gold = (s.gold + amount).clamp(0, 999999);
+    await _persist(s);
+  }
+
+  Future<void> updateBuffs(Map<String, DateTime?> buffs) async {
+    if (state == null) return;
+    var s = state!;
+    s.unlockedBuffs = buffs;
+    await _persist(s);
+  }
+
   Future<void> removeXP(int amount) async {
     if (state == null) return;
     final s = state!;
@@ -376,6 +390,8 @@ class UserNotifier extends StateNotifier<UserProfile?> {
       isSessionActive: s.isSessionActive,
       lastClaimedSleepHours: s.lastClaimedSleepHours,
       junkFreeDayStreak: s.junkFreeDayStreak,
+      gold: s.gold,
+      unlockedBuffs: Map.from(s.unlockedBuffs),
     );
   }
 }

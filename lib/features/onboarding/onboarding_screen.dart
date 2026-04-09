@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme.dart';
 import '../../providers/user_provider.dart';
 
@@ -38,19 +40,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 64),
                   Text(
-                    'PROJECT REQUIEM',
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(color: RequiemColors.bsaaRed),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'INITIATE DOSSIER',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: RequiemColors.textSecondary),
-                    textAlign: TextAlign.center,
-                  ),
+                    '> INITIATE PROJECT REQUIEM // DOSSIER UPLOAD',
+                    style: GoogleFonts.robotoMono(
+                      color: RequiemColors.operative,
+                      fontSize: 14,
+                      letterSpacing: 2,
+                    ),
+                    textAlign: TextAlign.left,
+                  ).animate().fadeIn(duration: 1000.ms),
                   const SizedBox(height: 48),
+                  
                   TextFormField(
                     decoration: const InputDecoration(
                       labelText: 'OPERATIVE ALIAS',
@@ -61,8 +62,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     textInputAction: TextInputAction.next,
                     validator: (val) => val == null || val.isEmpty ? 'Alias required.' : null,
                     onSaved: (val) => _name = val ?? '',
-                  ),
-                  const SizedBox(height: 16),
+                  ).animate().fadeIn(delay: 1000.ms).slideY(begin: 0.2),
+                  
+                  const SizedBox(height: 24),
+                  
                   TextFormField(
                     decoration: const InputDecoration(
                       labelText: 'STARTING WEIGHT (KG)',
@@ -79,8 +82,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       return null;
                     },
                     onSaved: (val) => _weight = double.tryParse(val ?? '') ?? 85.0,
-                  ),
-                  const SizedBox(height: 16),
+                  ).animate().fadeIn(delay: 1300.ms).slideY(begin: 0.2),
+                  
+                  const SizedBox(height: 24),
+                  
                   TextFormField(
                     decoration: const InputDecoration(
                       labelText: 'HEIGHT (CM)',
@@ -97,15 +102,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       return null;
                     },
                     onSaved: (val) => _height = double.tryParse(val ?? '') ?? 170.0,
-                  ),
-                  const SizedBox(height: 32),
+                  ).animate().fadeIn(delay: 1600.ms).slideY(begin: 0.2),
+                  
+                  const SizedBox(height: 48),
+                  
                   ElevatedButton(
                     onPressed: _submit,
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      backgroundColor: RequiemColors.bsaaRed,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: const BeveledRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
+                        )
+                      )
                     ),
-                    child: const Text('CONFIRM PROFILE'),
-                  ),
+                    child: Text(
+                      'ESTABLISH BIOMETRIC LINK',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 20, 
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 3,
+                      )
+                    ),
+                  )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(0.3))
+                  .animate().fadeIn(delay: 2000.ms),
+                  
                   const SizedBox(height: 32),
                 ],
               ),

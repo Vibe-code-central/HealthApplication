@@ -7,6 +7,8 @@ import '../../providers/user_provider.dart';
 import '../../providers/achievement_provider.dart';
 import '../../models/daily_task.dart';
 import '../../models/achievement.dart';
+import '../../providers/weekly_challenge_provider.dart';
+import '../../providers/shop_provider.dart';
 
 class OpsScreen extends ConsumerWidget {
   const OpsScreen({super.key});
@@ -89,8 +91,8 @@ class OpsScreen extends ConsumerWidget {
                         ? '"All objectives cleared. Outstanding performance, Kennedy." — Chris'
                         : '"${total - completed} objectives remain. Stay on target." — Chris',
                     style: GoogleFonts.barlow(
-                        color: RequiemColors.textSecondary,
-                        fontSize: 12,
+                        color: RequiemColors.textPrimary,
+                        fontSize: 14,
                         fontStyle: FontStyle.italic),
                   ),
                 ],
@@ -151,6 +153,41 @@ class OpsScreen extends ConsumerWidget {
             ),
           ),
 
+          // ── Tactical Logistics (Shop) ──────────────────────
+          const ReDividerHeader(
+            label: 'TACTICAL LOGISTICS',
+            color: RequiemColors.gold,
+            icon: Icons.store_outlined,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: InkWell(
+              onTap: () => _openShop(context),
+              child: RePanel(
+                borderColor: RequiemColors.gold.withOpacity(0.4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.shopping_cart_checkout, color: RequiemColors.gold),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('ACCESS REQUISITIONS', style: GoogleFonts.bebasNeue(fontSize: 20, color: RequiemColors.textPrimary)),
+                        Text('Spend Gold on passive upgrades.', style: GoogleFonts.barlowCondensed(color: RequiemColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      color: RequiemColors.gold.withOpacity(0.1),
+                      child: Text('${user?.gold ?? 0} G', style: GoogleFonts.barlowCondensed(color: RequiemColors.gold, fontWeight: FontWeight.bold)),
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ),
+
           // ── Weekly Challenge ─────────────────────────────
           const ReDividerHeader(
             label: 'WEEKLY CHALLENGE',
@@ -190,6 +227,15 @@ class OpsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _openShop(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: RequiemColors.primaryBackground,
+      isScrollControlled: true,
+      builder: (ctx) => const _ShopModal(),
+    );
+  }
 }
 
 // ── Metric Row ──────────────────────────────────────────────────────────────
@@ -225,13 +271,18 @@ class _MetricRow extends StatelessWidget {
 
 // ── Weekly Challenge ────────────────────────────────────────────────────────
 
-class _WeeklyChallenge extends StatelessWidget {
+class _WeeklyChallenge extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    // How many gym days have passed this week (Mon/Tue/Thu/Fri = 4)
-    final today = DateTime.now().weekday;
-    final gymDaysPassed = [1, 2, 4, 5].where((d) => d <= today).length;
-    final progress = gymDaysPassed / 4;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final challenge = ref.watch(weeklyChallengeProvider);
+
+    if (challenge == null) {
+      return const RePanel(child: Center(child: CircularProgressIndicator()));
+    }
+
+    final target = challenge.requirements.values.first as int;
+    final current = challenge.progress.values.first as int;
+    final progress = (current / target).clamp(0.0, 1.0);
 
     return RePanel(
       borderColor: RequiemColors.operative.withOpacity(0.4),
@@ -243,8 +294,8 @@ class _WeeklyChallenge extends StatelessWidget {
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                color: RequiemColors.operative,
-                child: Text('GREEN',
+                color: _parseSeverityColor(challenge.difficulty),
+                child: Text(challenge.difficulty,
                     style: GoogleFonts.barlowCondensed(
                         color: Colors.black,
                         fontSize: 10,
@@ -252,7 +303,7 @@ class _WeeklyChallenge extends StatelessWidget {
                         letterSpacing: 1.5)),
               ),
               const SizedBox(width: 10),
-              Text('FIELD OPERATIVE',
+              Text(challenge.title,
                   style: GoogleFonts.bebasNeue(
                       color: RequiemColors.textPrimary,
                       fontSize: 18,
@@ -260,27 +311,27 @@ class _WeeklyChallenge extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text('Log 4 gym sessions this week.',
+          Text(challenge.description,
               style: GoogleFonts.barlow(
                   color: RequiemColors.textPrimary, fontSize: 14)),
           const SizedBox(height: 10),
           ReStatusBar(
               value: progress,
-              color: RequiemColors.operative,
+              color: _parseSeverityColor(challenge.difficulty),
               height: 6),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$gymDaysPassed / 4 SESSIONS',
+              Text('$current / $target COMPLETED',
                   style: GoogleFonts.barlowCondensed(
                       color: RequiemColors.textSecondary,
                       fontSize: 11,
                       letterSpacing: 1)),
               Text(
-                  progress >= 1.0 ? 'COMPLETE' : 'IN PROGRESS',
+                  challenge.completed ? 'COMPLETED +${challenge.xpReward}XP' : 'IN PROGRESS',
                   style: GoogleFonts.barlowCondensed(
-                      color: progress >= 1.0
+                      color: challenge.completed
                           ? RequiemColors.operative
                           : RequiemColors.gold,
                       fontSize: 11,
@@ -591,6 +642,74 @@ class _AchievementTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+Color _parseSeverityColor(String severity) {
+  return switch (severity) {
+    'GREEN' => RequiemColors.operative,
+    'AMBER' => RequiemColors.gold,
+    'RED' => RequiemColors.bsaaRed,
+    _ => RequiemColors.textSecondary,
+  };
+}
+
+class _ShopModal extends ConsumerWidget {
+  const _ShopModal();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      height: MediaQuery.of(context).size.height * 0.7,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('TACTICAL REQUISITIONS', style: GoogleFonts.bebasNeue(fontSize: 28, color: RequiemColors.gold, letterSpacing: 2)),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: shopCatalog.length,
+              itemBuilder: (ctx, i) {
+                final item = shopCatalog[i];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: RePanel(
+                    borderColor: RequiemColors.gold.withOpacity(0.3),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.name, style: GoogleFonts.bebasNeue(fontSize: 20, color: RequiemColors.textPrimary)),
+                              Text(item.description, style: GoogleFonts.barlowCondensed(fontSize: 12, color: RequiemColors.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final success = await ref.read(shopProvider).purchase(item.id);
+                            if (success && context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${item.name} Acquired.', style: GoogleFonts.barlowCondensed(color: Colors.black)), backgroundColor: RequiemColors.gold));
+                            } else if (!success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Insufficient Gold or Already Owned.', style: GoogleFonts.barlowCondensed(color: Colors.white)), backgroundColor: RequiemColors.bsaaRed));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: RequiemColors.gold),
+                          child: Text('${item.goldCost}G', style: GoogleFonts.barlowCondensed(color: Colors.black, fontWeight: FontWeight.bold)),
+                        )
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          )
+        ],
       ),
     );
   }

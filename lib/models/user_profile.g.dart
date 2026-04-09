@@ -39,13 +39,15 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       isSessionActive: fields[19] as bool,
       lastClaimedSleepHours: fields[20] as double?,
       junkFreeDayStreak: fields[21] as int,
+      gold: fields[22] as int,
+      unlockedBuffs: (fields[23] as Map).cast<String, DateTime?>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(22)
+      ..writeByte(24)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -89,7 +91,11 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       ..writeByte(20)
       ..write(obj.lastClaimedSleepHours)
       ..writeByte(21)
-      ..write(obj.junkFreeDayStreak);
+      ..write(obj.junkFreeDayStreak)
+      ..writeByte(22)
+      ..write(obj.gold)
+      ..writeByte(23)
+      ..write(obj.unlockedBuffs);
   }
 
   @override
