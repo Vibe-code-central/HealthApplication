@@ -140,8 +140,7 @@ class NutritionScreen extends ConsumerWidget {
                     sublabel: 'Chicken, rice, eggs, dal, milk...',
                     color: RequiemColors.operative,
                     icon: Icons.check,
-                    onTap: () => _handleLog(
-                        context, ref, _mockMeal(), false),
+                    onTap: () => _openMealDialog(context, ref, preCheckJunk: false),
                   ),
                   const SizedBox(height: 8),
                   _LogButton(
@@ -149,8 +148,7 @@ class NutritionScreen extends ConsumerWidget {
                     sublabel: 'Cold drink, chips, fried food...',
                     color: RequiemColors.ember,
                     icon: Icons.warning_amber_outlined,
-                    onTap: () => _handleLog(
-                        context, ref, _mockJunk(), true),
+                    onTap: () => _openMealDialog(context, ref, preCheckJunk: true),
                   ),
                 ],
               ),
@@ -202,11 +200,23 @@ class NutritionScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _openMealDialog(BuildContext context, WidgetRef ref, {required bool preCheckJunk}) async {
+    final MealEntry? meal = await showModalBottomSheet(
+      context: context,
+      backgroundColor: RequiemColors.primaryBackground,
+      isScrollControlled: true,
+      builder: (ctx) => _MealEntryDialog(preCheckJunk: preCheckJunk),
+    );
+
+    if (meal != null && context.mounted) {
+      await _handleLog(context, ref, meal);
+    }
+  }
+
   Future<void> _handleLog(
     BuildContext context,
     WidgetRef ref,
     MealEntry meal,
-    bool isJunk,
   ) async {
     final result = await ref.read(nutritionProvider.notifier).logMeal(meal);
     if (!context.mounted) return;
@@ -654,19 +664,166 @@ class _AdaReportPanel extends StatelessWidget {
   }
 }
 
-// ── Mock helpers (to be replaced with real meal input dialog) ────────────────
-MealEntry _mockMeal() => MealEntry(
-    mealType: 'LUNCH',
-    description: 'Chicken Breast & Rice',
-    proteinGrams: 35.0,
-    isJunkFood: false,
-    isSugarDrink: false,
-    location: 'HOME');
+// ── Meal Intake Terminal ───────────────────────────────────────────────────────
 
-MealEntry _mockJunk() => MealEntry(
-    mealType: 'SNACK',
-    description: 'Cold Drink & Chips',
-    proteinGrams: 2.0,
-    isJunkFood: true,
-    isSugarDrink: true,
-    location: 'OUTSIDE');
+class _MealEntryDialog extends StatefulWidget {
+  final bool preCheckJunk;
+  const _MealEntryDialog({this.preCheckJunk = false});
+
+  @override
+  State<_MealEntryDialog> createState() => _MealEntryDialogState();
+}
+
+class _MealEntryDialogState extends State<_MealEntryDialog> {
+  final _formKey = GlobalKey<FormState>();
+  String _description = '';
+  double _protein = 0.0;
+  String _type = 'LUNCH';
+  bool _isJunk = false;
+  bool _isSugar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isJunk = widget.preCheckJunk;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 24,
+        right: 24,
+        top: 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'LOG DOSSIER RATION',
+                style: GoogleFonts.bebasNeue(
+                  fontSize: 28,
+                  color: widget.preCheckJunk ? RequiemColors.bsaaRed : RequiemColors.operative,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'RATION DESCRIPTION',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: RequiemColors.secondarySurface,
+                ),
+                style: const TextStyle(color: RequiemColors.textPrimary),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                onSaved: (v) => _description = v ?? '',
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'PROTEIN (g)',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: RequiemColors.secondarySurface,
+                      ),
+                      style: const TextStyle(color: RequiemColors.textPrimary),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Required';
+                        if (double.tryParse(v) == null) return 'Invalid Number';
+                        return null;
+                      },
+                      onSaved: (v) => _protein = double.parse(v!),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _type,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: RequiemColors.secondarySurface,
+                      ),
+                      dropdownColor: RequiemColors.secondarySurface,
+                      style: const TextStyle(color: RequiemColors.textPrimary),
+                      items: ['BREAKFAST', 'LUNCH', 'SNACK', 'DINNER']
+                          .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _type = v!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('COMPROMISED (JUNK FOOD)', style: TextStyle(color: RequiemColors.ember)),
+                value: _isJunk,
+                activeColor: RequiemColors.ember,
+                checkColor: Colors.black,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (v) => setState(() {
+                  _isJunk = v ?? false;
+                  if (!_isJunk) _isSugar = false;
+                }),
+              ),
+              if (_isJunk)
+                CheckboxListTile(
+                  title: const Text('SUGARY DRINK', style: TextStyle(color: RequiemColors.bsaaRed)),
+                  value: _isSugar,
+                  activeColor: RequiemColors.bsaaRed,
+                  checkColor: Colors.black,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: (v) => setState(() => _isSugar = v ?? false),
+                ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isJunk ? RequiemColors.ember : RequiemColors.operative,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    _formKey.currentState!.save();
+                    Navigator.pop(
+                      context,
+                      MealEntry(
+                        mealType: _type,
+                        description: _description,
+                        proteinGrams: _protein,
+                        isJunkFood: _isJunk,
+                        isSugarDrink: _isSugar,
+                        location: 'UNKNOWN', // Placeholder
+                      ),
+                    );
+                  }
+                },
+                child: Text(
+                  'CONFIRM RATION',
+                  style: GoogleFonts.barlowCondensed(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
