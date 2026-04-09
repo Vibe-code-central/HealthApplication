@@ -31,14 +31,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           color: RequiemColors.primaryBackground,
         ),
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const SizedBox(height: 48),
                   Text(
                     'PROJECT REQUIEM',
                     style: Theme.of(context).textTheme.displayMedium?.copyWith(color: RequiemColors.bsaaRed),
@@ -58,6 +58,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       filled: true,
                       fillColor: RequiemColors.secondarySurface,
                     ),
+                    textInputAction: TextInputAction.next,
                     validator: (val) => val == null || val.isEmpty ? 'Alias required.' : null,
                     onSaved: (val) => _name = val ?? '',
                   ),
@@ -69,9 +70,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       filled: true,
                       fillColor: RequiemColors.secondarySurface,
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (val) => val == null || double.tryParse(val) == null ? 'Valid weight required.' : null,
-                    onSaved: (val) => _weight = double.parse(val!),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Weight required.';
+                      final parsed = double.tryParse(val);
+                      if (parsed == null || parsed <= 0) return 'Enter a valid weight (e.g. 85).';
+                      return null;
+                    },
+                    onSaved: (val) => _weight = double.tryParse(val ?? '') ?? 85.0,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -81,9 +88,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       filled: true,
                       fillColor: RequiemColors.secondarySurface,
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (val) => val == null || double.tryParse(val) == null ? 'Valid height required.' : null,
-                    onSaved: (val) => _height = double.parse(val!),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.done,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return 'Height required.';
+                      final parsed = double.tryParse(val);
+                      if (parsed == null || parsed <= 0) return 'Enter a valid height (e.g. 170).';
+                      return null;
+                    },
+                    onSaved: (val) => _height = double.tryParse(val ?? '') ?? 170.0,
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
@@ -93,6 +106,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ),
                     child: const Text('CONFIRM PROFILE'),
                   ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

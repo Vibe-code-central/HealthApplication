@@ -86,28 +86,40 @@ class CombatScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         children: [
-          Text('Set $setNum', style: Theme.of(context).textTheme.bodyLarge),
-          const Spacer(),
           SizedBox(
-            width: 70,
+            width: 44,
+            child: Text('Set $setNum', style: Theme.of(context).textTheme.bodyLarge),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
             child: TextField(
-              decoration: const InputDecoration(hintText: 'kg', isDense: true),
-              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                hintText: 'kg',
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 70,
+          const SizedBox(width: 8),
+          Expanded(
             child: TextField(
-              decoration: const InputDecoration(hintText: 'reps', isDense: true),
+              decoration: const InputDecoration(
+                hintText: 'reps',
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              ),
               keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(width: 16),
           IconButton(
-            icon: const Icon(Icons.check_circle_outline),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.check_circle_outline, size: 22),
             onPressed: () {},
-          )
+          ),
         ],
       ),
     );

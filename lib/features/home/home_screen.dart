@@ -85,9 +85,9 @@ class HomeScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildQuickAction(context, '💧 Water', Icons.water_drop, RequiemColors.intelBlue),
-                _buildQuickAction(context, '🍽️ Meal', Icons.restaurant, RequiemColors.operative),
-                _buildQuickAction(context, '😴 Sleep', Icons.bedtime, RequiemColors.shadow),
+                _buildQuickAction(context, 'Water', Icons.water_drop, RequiemColors.intelBlue),
+                _buildQuickAction(context, 'Meal', Icons.restaurant, RequiemColors.operative),
+                _buildQuickAction(context, 'Sleep', Icons.bedtime, RequiemColors.shadow),
               ],
             ),
             const SizedBox(height: 24),
