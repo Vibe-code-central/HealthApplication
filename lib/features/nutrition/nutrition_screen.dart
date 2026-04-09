@@ -79,31 +79,158 @@ class NutritionScreen extends ConsumerWidget {
             // MEAL LOG
             Text('DAILY LOG',
                 style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            ...todayLog.meals.map(
-              (meal) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: Icon(
-                    meal.isJunkFood
-                        ? Icons.warning
-                        : Icons.check_circle,
-                    color: meal.isJunkFood
-                        ? RequiemColors.ember
-                        : RequiemColors.operative,
-                  ),
-                  title: Text(meal.description,
-                      style: Theme.of(context).textTheme.bodyLarge),
-                  subtitle: Text('${meal.proteinGrams}g Protein',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: RequiemColors.textSecondary)),
-                  trailing: meal.isJunkFood
-                      ? const Text('+Wesker',
-                          style: TextStyle(color: RequiemColors.ember))
-                      : null,
-                ),
-              ),
+            const SizedBox(height: 4),
+            Text(
+              'Swipe left on any entry or tap ✕ to reverse a wrong log.',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: RequiemColors.textMuted),
             ),
+            const SizedBox(height: 8),
+            ...List.generate(todayLog.meals.length, (index) {
+              final meal = todayLog.meals[index];
+              return Dismissible(
+                key: ValueKey('meal_${index}_${meal.description}'),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 16),
+                  color: RequiemColors.bsaaRed.withOpacity(0.85),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.undo, color: Colors.white),
+                      SizedBox(height: 2),
+                      Text('UNDO',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                confirmDismiss: (_) async {
+                  return await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: RequiemColors.secondarySurface,
+                      title: const Text('REVERSE LOG ENTRY?',
+                          style: TextStyle(color: RequiemColors.bsaaRed)),
+                      content: Text(
+                        'Remove "${meal.description}" and reverse all its effects on XP, Wesker power, and protein?',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('CANCEL',
+                                style: TextStyle(
+                                    color: RequiemColors.textSecondary))),
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('REVERSE',
+                                style: TextStyle(color: RequiemColors.bsaaRed))),
+                      ],
+                    ),
+                  );
+                },
+                onDismissed: (_) async {
+                  final result = await ref
+                      .read(nutritionProvider.notifier)
+                      .removeMeal(index);
+                  if (!context.mounted) return;
+                  if (result.narrativeMessage != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      backgroundColor:
+                          RequiemColors.intelBlue.withOpacity(0.15),
+                      content: Text(result.narrativeMessage!,
+                          style: const TextStyle(
+                              color: RequiemColors.intelBlue)),
+                    ));
+                  }
+                },
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: Icon(
+                      meal.isJunkFood ? Icons.warning : Icons.check_circle,
+                      color: meal.isJunkFood
+                          ? RequiemColors.ember
+                          : RequiemColors.operative,
+                    ),
+                    title: Text(meal.description,
+                        style: Theme.of(context).textTheme.bodyLarge),
+                    subtitle: Text('${meal.proteinGrams}g Protein',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: RequiemColors.textSecondary)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (meal.isJunkFood)
+                          const Text('+Wesker',
+                              style: TextStyle(
+                                  color: RequiemColors.ember, fontSize: 11)),
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              size: 18, color: RequiemColors.textMuted),
+                          tooltip: 'Reverse this log entry',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: RequiemColors.secondarySurface,
+                                title: const Text('REVERSE LOG ENTRY?',
+                                    style:
+                                        TextStyle(color: RequiemColors.bsaaRed)),
+                                content: Text(
+                                  'Remove "${meal.description}" and reverse all its effects?',
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('CANCEL',
+                                          style: TextStyle(
+                                              color:
+                                                  RequiemColors.textSecondary))),
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('REVERSE',
+                                          style: TextStyle(
+                                              color: RequiemColors.bsaaRed))),
+                                ],
+                              ),
+                            );
+                            if (confirm == true && context.mounted) {
+                              final result = await ref
+                                  .read(nutritionProvider.notifier)
+                                  .removeMeal(index);
+                              if (!context.mounted) return;
+                              if (result.narrativeMessage != null) {
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                  backgroundColor:
+                                      RequiemColors.intelBlue.withOpacity(0.15),
+                                  content: Text(result.narrativeMessage!,
+                                      style: const TextStyle(
+                                          color: RequiemColors.intelBlue)),
+                                ));
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+
 
             const SizedBox(height: 24),
 

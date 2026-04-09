@@ -187,6 +187,76 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     );
   }
 
+  // ── Remove Meal (undo wrong log) ────────────────────────
+
+  /// Removes a meal at [index] from today's log and fully reverses its effects:
+  /// protein, junk count, Wesker power, and XP are all rolled back.
+  Future<IntegrityResult> removeMeal(int mealIndex) async {
+    await _ensureTodayLog();
+    final todayLog = getTodayLog();
+
+    if (mealIndex < 0 || mealIndex >= todayLog.meals.length) {
+      return const IntegrityResult(allowed: false);
+    }
+
+    final meal = todayLog.meals[mealIndex];
+
+    // Reverse protein
+    todayLog.proteinGrams =
+        (todayLog.proteinGrams - meal.proteinGrams).clamp(0, double.infinity);
+
+    // Reverse junk effects
+    if (meal.isJunkFood && todayLog.junkFoodIncidents > 0) {
+      todayLog.junkFoodIncidents--;
+
+      // Recalculate what penalty was applied and reverse it
+      final profile = _ref.read(userProvider);
+      if (profile != null) {
+        final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+        final weeklyJunkCount = state
+            .where((log) => log.date.isAfter(weekAgo))
+            .fold<int>(0, (sum, log) => sum + log.junkFoodIncidents);
+
+        final penaltyMultiplier =
+            IntegrityService.junkPenaltyMultiplier(weeklyJunkCount);
+        final multiplier = IntegrityService.penaltyMultiplier(profile);
+        final basePenalty = meal.isSugarDrink ? 40 : 30;
+        final baseWesker = meal.isSugarDrink ? 15 : 10;
+
+        final xpRestored =
+            ((basePenalty * penaltyMultiplier) * multiplier).round();
+        final weskerRestored =
+            ((baseWesker * penaltyMultiplier) * multiplier).round();
+
+        todayLog.weskerImpact =
+            (todayLog.weskerImpact - weskerRestored).clamp(0, 9999);
+
+        // Restore XP and reduce Wesker
+        await _ref.read(userProvider.notifier).addXP(xpRestored);
+        await _ref.read(userProvider.notifier).reduceWeskerPower(weskerRestored);
+      }
+    } else if (!meal.isJunkFood) {
+      // If removing a clean meal caused protein to drop below target,
+      // reverse any protein-target XP bonus that was awarded
+      final wasAboveTarget =
+          todayLog.proteinGrams + meal.proteinGrams >= 160;
+      final nowBelowTarget = todayLog.proteinGrams < 160;
+      if (wasAboveTarget && nowBelowTarget) {
+        await _ref.read(userProvider.notifier).removeXP(40);
+      }
+    }
+
+    todayLog.meals.removeAt(mealIndex);
+    await _saveToday(todayLog);
+
+    return const IntegrityResult(
+      allowed: true,
+      narrativeMessage:
+          '"Log corrected. Integrity restored. Don\'t make a habit of it." — Ada',
+      characterId: 'ADA',
+    );
+  }
+
   // ── Persist ─────────────────────────────────────────────
 
   Future<void> _saveToday(NutritionLog updatedLog) async {
@@ -201,3 +271,4 @@ class NutritionNotifier extends StateNotifier<List<NutritionLog>> {
     _loadLogs();
   }
 }
+
